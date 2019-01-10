@@ -1,0 +1,17 @@
+extends layout
+
+block content
+
+  header(class="header")
+    h1= title
+    p= "Volume"
+      input(id="volume", type="range", min=0, max=100, value=20)
+  div(class="left")
+    ul(id="music_list")
+      -
+        var list = music
+      each item in list
+        li(title=item)= item
+  div(class="right", id="box")
+
+  script(src='/javascripts/index.js')
