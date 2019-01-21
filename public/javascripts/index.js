@@ -2,17 +2,37 @@ function $(s) {
 	return document.querySelectorAll(s)
 }
 
+function random(m, n) {
+	return Math.round(Math.random() * (n - m) + m)
+}
+
 (function () {
+	var dots = []
+	var size = 128
+	var line
+	var box = $('#box')[0]
+	var width, height
+	var canvas = document.createElement('canvas')
+	var ctx = canvas.getContext('2d')
 	var list = $('#music_list li')
+	var types = $('#type li')
 
-	//实例化音频对象
-	var AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext
+	var mv = new MusicVisualizer({
+		size: size,
+		visualizer: draw
+	})
 
-	if (!AudioContext) {
-		alert('您的浏览器不支持audio API，请更换浏览器（chrome、firefox）再尝试')
-		return
-	}
+	box.appendChild(canvas)
 
+	types.forEach(function (type, index) {
+		type.onclick = function () {
+			for (let i = 0; i < types.length; i++) {
+				types[i].className = ''
+			}
+			draw.type = this.getAttribute('data-type')
+			this.className = 'selected'
+		}
+	})
 
 	list.forEach((item, index) => {
 		item.onclick = function () {
@@ -20,98 +40,85 @@ function $(s) {
 				item.className = ''
 			})
 			this.className = 'selected'
-			load('/music/' + this.title)
+			//load('/music/' + this.title)
+			mv.play('/music/' + this.title);
 		}
 	})
 
-	var xhr = new XMLHttpRequest()
-	var AC = new AudioContext()
-
-	var gainNode = AC.createGain()
-	gainNode.connect(AC.destination)
-	// analyser为analysernode，具有频率的数据，用于创建数据可视化
-	var analyser = AC.createAnalyser()
-	var size = 128
-	analyser.fftSize = size * 2
-	analyser.connect(gainNode)
-
-	var box = $('#box')[0]
-	var width, height;
-	var canvas = document.createElement('canvas')
-	var ctx = canvas.getContext('2d')
-	box.appendChild(canvas)
+	function getDots() {
+		dots = []
+		for (let i = 0; i < size; i++) {
+			let dot = {
+				x: random(0, width),
+				y: random(0, height),
+				dx: random(1, 4),
+				color: 'rgba(' + random(0, 255) + ',' +random(0, 255) + ', ' + random(0, 255) + ', 0.6)',
+				cap: 0
+			}
+			dots.push(dot)
+		}
+	}
 
 	function resize() {
 		height = box.clientHeight
 		width = box.clientWidth
 		canvas.height = height
 		canvas.width = width
-		var line = ctx.createLinearGradient(0, 0, 0, height)
+		line = ctx.createLinearGradient(0, 0, 0, height)
 		line.addColorStop(0, 'red')
 		line.addColorStop(0.5, 'yellow')
 		line.addColorStop(1, 'green')
-		ctx.fillStyle = line
+
+		getDots()
 	}
+
 	function draw(arr) {
 		ctx.clearRect(0, 0, width, height)
 		var w = width / size
-		for (var i = 0; i < size; i ++) {
-			var h = arr[i] / 256 * height
-			ctx.fillRect(w * i, height - h, w * 0.8, h)
+		var cw = w * 0.8;
+		var capH = cw > 10 ? 10 : cw;
+		ctx.fillStyle = line
+		for (var i = 0; i < size; i++) {
+			var o = dots[i]
+			if (draw.type === 'column') {
+				var h = arr[i] / 256 * height
+				ctx.fillRect(w * i, height - h, cw, h)
+				ctx.fillRect(w * i, height - (o.cap + capH), cw, capH)
+
+				o.cap--
+				if (o.cap < 0) {
+					o.cap = 0
+				}
+
+				if (h > 0 && o.cap < h + 40) {
+					o.cap = h + 40 >= height - capH ? height - capH : h + 40
+				}
+
+			} else if (draw.type === 'dots') {
+				var r = 10 + arr[i] / 256 * (height > width ? width : height) / 10
+				ctx.beginPath()
+				ctx.arc(o.x, o.y, r, 0, Math.PI * 2, true)
+				var g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, r)
+				g.addColorStop(0, '#fff')
+				g.addColorStop(1, o.color)
+				ctx.fillStyle = g
+				ctx.fill()
+				o.x+=o.dx
+				o.x = o.x > width ? 0 : o.x
+			}
 		}
 	}
+	draw.type = 'column'
+
 	resize()
-	window.onresize =  resize
+	window.onresize = resize
 
-	var source = null
-	var count = 0
-
-	visualizer()
-
-	function load(url) {
-		var n = ++count
-		source && source[source.stop ? "stop" : "noteOff"]()
-		xhr.abort()
-		xhr.open('get', url)
-		xhr.responseType = 'arraybuffer'
-		xhr.onload = function () {
-			if (n !== count) return
-			AC.decodeAudioData(xhr.response)
-				.then(function (buffer) {
-					if (n !== count) return
-					var bufferSource = AC.createBufferSource()
-					bufferSource.buffer = buffer
-					bufferSource.connect(analyser)
-					bufferSource[bufferSource.start ? 'start' : 'noteOn'](0)
-					source = bufferSource
-				})
-				.catch(error => {
-					console.log(error)
-				})
-		}
-		xhr.send()
-	}
-
-	function visualizer() {
-		var dataArray = new Uint8Array(analyser.frequencyBinCount);
-		function v() {
-			analyser.getByteFrequencyData(dataArray)
-			// console.log(dataArray)
-			draw(dataArray)
-			requestAnimationFrame(v)
-		}
-		requestAnimationFrame(v)
-	}
 
 	$('#volume')[0].onchange = function () {
-		changeVolume(this.value / this.max)
+		mv.changeVolume(this.value / this.max)
 	}
 
 	$('#volume')[0].onchange()
-
-	function changeVolume(percent) {
-		gainNode.gain.value = percent
-	}
 
 })()
 

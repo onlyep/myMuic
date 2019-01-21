@@ -4,8 +4,12 @@ block content
 
   header(class="header")
     h1= title
-    p= "Volume"
+    p
+      |Volume
       input(id="volume", type="range", min=0, max=100, value=20)
+      ul(class="type" id="type")
+        li(data-type="dots")= "Dots"
+        li(class="selected" data-type="column")= "Column"
   div(class="left")
     ul(id="music_list")
       -
@@ -14,4 +18,5 @@ block content
         li(title=item)= item
   div(class="right", id="box")
 
+  script(src='/javascripts/MusicVisualizer.js')
   script(src='/javascripts/index.js')

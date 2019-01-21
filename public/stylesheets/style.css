@@ -20,6 +20,25 @@ body {
 	height: 50px;
 	border: 1px solid #fff;
 	display: flex;
+	align-items: center;
+}
+.type {
+	margin-left: 40px;
+	border-radius: 4px;
+	border: 1px solid #ffffff;
+	overflow: hidden;
+}
+.type li{
+	float: left;
+	width: 90px;
+	text-align: center;
+	padding: 8px 0;
+	color: #ffffff;
+	cursor: pointer;
+}
+.type li.selected{
+	color: #000000;
+	background: #ffffff;
 }
 .left{
 	position: absolute;
@@ -28,6 +47,7 @@ body {
 	bottom: 10px;
 	width: 180px;
 	border: 1px solid #fff;
+	overflow-y: auto;
 }
 .left ul li{
 	padding: 4px 6px;
